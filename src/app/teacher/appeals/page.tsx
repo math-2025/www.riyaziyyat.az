@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ import { Appeal } from "@/lib/types";
 import { format } from "date-fns";
 import { az } from "date-fns/locale";
 import withAuth from "@/components/withAuth";
-import { getFirestore, collection, onSnapshot, doc, updateDoc, getDoc } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { app } from "@/firebase/config";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,8 +79,10 @@ function TeacherAppealsPage() {
           if (examSnap.exists()) {
               const exam = examSnap.data();
               const currentScore = submissionDoc.data().score || 0;
-              const newScore = currentScore + exam.pointsPerQuestion;
-              await updateDoc(submissionRef, { score: newScore });
+              if (currentScore >= 0) {
+                const newScore = currentScore + exam.pointsPerQuestion;
+                await updateDoc(submissionRef, { score: newScore });
+              }
           }
         }
       }
@@ -113,120 +116,123 @@ function TeacherAppealsPage() {
       ) : (
         <Accordion type="multiple" defaultValue={['pending']} className="w-full space-y-4">
           
-          {/* Pending Appeals */}
-          <Card>
-            <CardHeader>
-                <AccordionTrigger className="w-full p-0">
-                    <CardTitle className="flex items-center gap-3">
-                         <Badge variant="outline">{filteredAppeals('pending').length}</Badge>
-                        Gözləyən Müraciətlər
-                    </CardTitle>
-                </AccordionTrigger>
-            </CardHeader>
-            <AccordionContent>
-                <CardContent>
-                    {filteredAppeals('pending').length === 0 ? <p className="text-muted-foreground p-4 text-center">Gözləyən müraciət yoxdur.</p> :
-                     filteredAppeals('pending').map(appeal => (
-                        <Card key={appeal.id} className="mb-4">
-                            <CardHeader>
-                                <CardTitle className="text-lg">{appeal.examTitle}</CardTitle>
-                                <CardDescription>
-                                    Şagird: {appeal.studentName} | Tarix: {format(new Date(appeal.createdAt), 'd MMMM yyyy, HH:mm', { locale: az })}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div>
-                                    <p className="font-semibold text-sm">Sual:</p>
-                                    <p className="p-2 bg-muted/50 rounded-md text-sm">{appeal.questionText}</p>
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-sm">Şagirdin İzahı:</p>
-                                    <p className="p-2 bg-muted/50 rounded-md text-sm">{appeal.studentJustification}</p>
-                                </div>
-                                 <div className="space-y-2">
-                                     <label className="font-semibold text-sm">Rədd etmə səbəbi (istəyə bağlı)</label>
-                                     <Textarea 
-                                        placeholder="Məs., cavabınız yanlışdır, çünki..."
-                                        value={teacherResponses[appeal.id] || ''}
-                                        onChange={(e) => setTeacherResponses({...teacherResponses, [appeal.id]: e.target.value})}
-                                     />
-                                 </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Button variant="destructive" onClick={() => handleUpdateStatus(appeal.id, 'rejected')}>Rədd et</Button>
-                                    <Button onClick={() => handleUpdateStatus(appeal.id, 'approved')}>Təsdiqlə</Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                     ))
-                    }
-                </CardContent>
-            </AccordionContent>
-          </Card>
-          
-          {/* Approved Appeals */}
-          <Card>
-            <CardHeader>
-                <AccordionTrigger className="w-full p-0">
-                    <CardTitle className="flex items-center gap-3">
-                         <Badge>{filteredAppeals('approved').length}</Badge>
-                        Təsdiqlənmiş Müraciətlər
-                    </CardTitle>
-                </AccordionTrigger>
-            </CardHeader>
-             <AccordionContent>
-                <CardContent>
-                    {filteredAppeals('approved').length === 0 ? <p className="text-muted-foreground p-4 text-center">Təsdiqlənmiş müraciət yoxdur.</p> :
-                        filteredAppeals('approved').map(appeal => (
-                            <Card key={appeal.id} className="mb-4 bg-green-500/5">
-                                 <CardHeader>
-                                    <CardTitle className="text-lg">{appeal.examTitle}</CardTitle>
-                                    <CardDescription>
-                                        Şagird: {appeal.studentName} | Tarix: {format(new Date(appeal.createdAt), 'd MMMM yyyy, HH:mm', { locale: az })}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4 text-sm">
-                                     <p><b>Sual:</b> {appeal.questionText}</p>
-                                     <p><b>Şagirdin İzahı:</b> {appeal.studentJustification}</p>
-                                </CardContent>
-                            </Card>
-                        ))
-                    }
-                </CardContent>
-            </AccordionContent>
-          </Card>
-          
-          {/* Rejected Appeals */}
-           <Card>
-            <CardHeader>
-                <AccordionTrigger className="w-full p-0">
-                     <CardTitle className="flex items-center gap-3">
-                         <Badge variant="destructive">{filteredAppeals('rejected').length}</Badge>
-                        Rədd Edilmiş Müraciətlər
-                    </CardTitle>
-                </AccordionTrigger>
-            </CardHeader>
-             <AccordionContent>
-                <CardContent>
-                    {filteredAppeals('rejected').length === 0 ? <p className="text-muted-foreground p-4 text-center">Rədd edilmiş müraciət yoxdur.</p> :
-                        filteredAppeals('rejected').map(appeal => (
-                            <Card key={appeal.id} className="mb-4 bg-destructive/5">
+          <AccordionItem value="pending">
+             <Card>
+                <CardHeader>
+                    <AccordionTrigger className="w-full p-0">
+                        <CardTitle className="flex items-center gap-3">
+                             <Badge variant="outline">{filteredAppeals('pending').length}</Badge>
+                            Gözləyən Müraciətlər
+                        </CardTitle>
+                    </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                    <CardContent>
+                        {filteredAppeals('pending').length === 0 ? <p className="text-muted-foreground p-4 text-center">Gözləyən müraciət yoxdur.</p> :
+                         filteredAppeals('pending').map(appeal => (
+                            <Card key={appeal.id} className="mb-4">
                                 <CardHeader>
                                     <CardTitle className="text-lg">{appeal.examTitle}</CardTitle>
                                     <CardDescription>
                                         Şagird: {appeal.studentName} | Tarix: {format(new Date(appeal.createdAt), 'd MMMM yyyy, HH:mm', { locale: az })}
                                     </CardDescription>
                                 </CardHeader>
-                                 <CardContent className="space-y-4 text-sm">
-                                     <p><b>Sual:</b> {appeal.questionText}</p>
-                                     <p><b>Şagirdin İzahı:</b> {appeal.studentJustification}</p>
-                                     {appeal.teacherResponse && <p className="font-semibold text-destructive"><b>Müəllimin Rəyi:</b> {appeal.teacherResponse}</p>}
+                                <CardContent className="space-y-4">
+                                    <div>
+                                        <p className="font-semibold text-sm">Sual:</p>
+                                        <p className="p-2 bg-muted/50 rounded-md text-sm">{appeal.questionText}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Şagirdin İzahı:</p>
+                                        <p className="p-2 bg-muted/50 rounded-md text-sm">{appeal.studentJustification}</p>
+                                    </div>
+                                     <div className="space-y-2">
+                                         <label className="font-semibold text-sm">Rədd etmə səbəbi (istəyə bağlı)</label>
+                                         <Textarea 
+                                            placeholder="Məs., cavabınız yanlışdır, çünki..."
+                                            value={teacherResponses[appeal.id] || ''}
+                                            onChange={(e) => setTeacherResponses({...teacherResponses, [appeal.id]: e.target.value})}
+                                         />
+                                     </div>
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Button variant="destructive" onClick={() => handleUpdateStatus(appeal.id, 'rejected')}>Rədd et</Button>
+                                        <Button onClick={() => handleUpdateStatus(appeal.id, 'approved')}>Təsdiqlə</Button>
+                                    </div>
                                 </CardContent>
                             </Card>
-                        ))
-                    }
-                </CardContent>
-            </AccordionContent>
-          </Card>
+                         ))
+                        }
+                    </CardContent>
+                </AccordionContent>
+            </Card>
+          </AccordionItem>
+          
+          <AccordionItem value="approved">
+             <Card>
+                <CardHeader>
+                    <AccordionTrigger className="w-full p-0">
+                        <CardTitle className="flex items-center gap-3">
+                             <Badge>{filteredAppeals('approved').length}</Badge>
+                            Təsdiqlənmiş Müraciətlər
+                        </CardTitle>
+                    </AccordionTrigger>
+                </CardHeader>
+                 <AccordionContent>
+                    <CardContent>
+                        {filteredAppeals('approved').length === 0 ? <p className="text-muted-foreground p-4 text-center">Təsdiqlənmiş müraciət yoxdur.</p> :
+                            filteredAppeals('approved').map(appeal => (
+                                <Card key={appeal.id} className="mb-4 bg-green-500/5">
+                                     <CardHeader>
+                                        <CardTitle className="text-lg">{appeal.examTitle}</CardTitle>
+                                        <CardDescription>
+                                            Şagird: {appeal.studentName} | Tarix: {format(new Date(appeal.createdAt), 'd MMMM yyyy, HH:mm', { locale: az })}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4 text-sm">
+                                         <p><b>Sual:</b> {appeal.questionText}</p>
+                                         <p><b>Şagirdin İzahı:</b> {appeal.studentJustification}</p>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        }
+                    </CardContent>
+                </AccordionContent>
+            </Card>
+          </AccordionItem>
+          
+          <AccordionItem value="rejected">
+               <Card>
+                <CardHeader>
+                    <AccordionTrigger className="w-full p-0">
+                         <CardTitle className="flex items-center gap-3">
+                             <Badge variant="destructive">{filteredAppeals('rejected').length}</Badge>
+                            Rədd Edilmiş Müraciətlər
+                        </CardTitle>
+                    </AccordionTrigger>
+                </CardHeader>
+                 <AccordionContent>
+                    <CardContent>
+                        {filteredAppeals('rejected').length === 0 ? <p className="text-muted-foreground p-4 text-center">Rədd edilmiş müraciət yoxdur.</p> :
+                            filteredAppeals('rejected').map(appeal => (
+                                <Card key={appeal.id} className="mb-4 bg-destructive/5">
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">{appeal.examTitle}</CardTitle>
+                                        <CardDescription>
+                                            Şagird: {appeal.studentName} | Tarix: {format(new Date(appeal.createdAt), 'd MMMM yyyy, HH:mm', { locale: az })}
+                                        </CardDescription>
+                                    </CardHeader>
+                                     <CardContent className="space-y-4 text-sm">
+                                         <p><b>Sual:</b> {appeal.questionText}</p>
+                                         <p><b>Şagirdin İzahı:</b> {appeal.studentJustification}</p>
+                                         {appeal.teacherResponse && <p className="font-semibold text-destructive"><b>Müəllimin Rəyi:</b> {appeal.teacherResponse}</p>}
+                                     </CardContent>
+                                </Card>
+                            ))
+                        }
+                    </CardContent>
+                </AccordionContent>
+              </Card>
+          </AccordionItem>
 
         </Accordion>
       )}
