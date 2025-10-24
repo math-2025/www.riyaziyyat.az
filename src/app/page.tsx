@@ -10,8 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Calculator } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { getDocs, collection, query, where, getFirestore } from 'firebase/firestore';
-import { app } from '@/firebase/config';
 import { Student } from '@/lib/types';
 
 
@@ -23,7 +21,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   
   const loginImage = PlaceHolderImages.find(img => img.id === 'login-hero');
-  const db = getFirestore(app);
 
   useEffect(() => {
     // Clear any existing session data on login page load
@@ -31,7 +28,7 @@ export default function LoginPage() {
     localStorage.removeItem('userRole');
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -43,43 +40,13 @@ export default function LoginPage() {
       return;
     }
     
-    try {
-        const studentsRef = collection(db, "students");
-        const q = query(studentsRef, where("email", "==", email), where("pass", "==", password));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            toast({
-                variant: 'destructive',
-                title: 'Giriş alınmadı',
-                description: 'İstifadəçi adı və ya şifrə yanlışdır.',
-            });
-        } else {
-            const studentDoc = querySnapshot.docs[0];
-            const student = { id: studentDoc.id, ...studentDoc.data() } as Student;
-
-            if (student.status === 'disabled') {
-                toast({
-                variant: 'destructive',
-                title: 'Giriş alınmadı',
-                description: 'Hesabınız deaktiv edilib. Zəhmət olmasa müəlliminizlə əlaqə saxlayın.',
-                });
-            } else {
-                localStorage.setItem("currentStudent", JSON.stringify(student));
-                localStorage.setItem('userRole', 'student');
-                toast({ title: 'Giriş uğurludur', description: `Xoş gəlmisiniz, ${student.name}!` });
-                router.push('/student/dashboard');
-            }
-        }
-    } catch (error) {
-        console.error("Login error: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Xəta',
-            description: 'Giriş zamanı xəta baş verdi. Zəhmət olmasa sonra yenidən cəhd edin.',
-        });
-    }
-
+    // NOTE: Student login is temporarily disabled as we removed direct DB dependency.
+    // This part can be re-enabled with proper mock data or API layer later.
+    toast({
+        variant: 'destructive',
+        title: 'Giriş alınmadı',
+        description: 'Hazırda yalnız müəllim girişi aktivdir.',
+    });
 
     setIsLoading(false);
   };

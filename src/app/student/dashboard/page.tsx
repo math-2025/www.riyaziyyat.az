@@ -28,8 +28,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { collection, getDocs, getFirestore, query, where, onSnapshot } from 'firebase/firestore';
-import { app } from '@/firebase/config';
 import withAuth from '@/components/withAuth';
 
 function StudentDashboard() {
@@ -37,36 +35,19 @@ function StudentDashboard() {
   const [studentExams, setStudentExams] = useState<Exam[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const db = getFirestore(app);
 
   useEffect(() => {
     const studentData = localStorage.getItem('currentStudent');
     if (studentData) {
       const parsedStudent: Student = JSON.parse(studentData);
       setCurrentStudent(parsedStudent);
-
-      const examsQuery = query(collection(db, "exams"), where("assignedGroups", "array-contains", parsedStudent.group));
-      const submissionsQuery = query(collection(db, "submissions"), where("studentId", "==", parsedStudent.id));
-
-      const unsubscribeExams = onSnapshot(examsQuery, (querySnapshot) => {
-        const examsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exam));
-        setStudentExams(examsData);
-        setIsLoading(false);
-      });
-      
-      const unsubscribeSubmissions = onSnapshot(submissionsQuery, (querySnapshot) => {
-        const submissionsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-        setSubmissions(submissionsData);
-      });
-
-      return () => {
-        unsubscribeExams();
-        unsubscribeSubmissions();
-      };
+      // Data fetching is removed, so we'll just show loading as false.
+      // In a real app, you'd fetch data here.
+      setIsLoading(false);
     } else {
         setIsLoading(false);
     }
-  }, [db]);
+  }, []);
   
   const announcements = studentExams.filter(exam => exam.announcement).map(exam => ({
     examTitle: exam.title,

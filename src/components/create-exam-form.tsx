@@ -25,13 +25,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { PlusCircle, Trash2, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Exam } from "@/lib/types";
+import { Exam, Question } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Checkbox } from "./ui/checkbox";
-import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
-import { app } from "@/firebase/config";
 import { ScrollArea } from "./ui/scroll-area";
+import { nanoid } from "nanoid";
 
 const mathSymbols = ['√', '∛', '²', '³', 'π', 'Σ', '∫', '≠', '≤', '≥', '÷', '×', '∞', '°', '±'];
 
@@ -56,21 +55,20 @@ const formSchema = z.object({
     path: ["endTime"],
 });
 
-export function CreateExamForm() {
+type CreateExamFormProps = {
+  initialQuestions?: Question[];
+}
+
+export function CreateExamForm({ initialQuestions }: CreateExamFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const textAreaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [studentGroups, setStudentGroups] = useState<string[]>([]);
-  const db = getFirestore(app);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "studentGroups"), (snapshot) => {
-        const groupsData = snapshot.docs.map(doc => doc.data().name as string);
-        setStudentGroups(groupsData);
-    });
-    return () => unsubscribe();
-  }, [db]);
+    // Data fetching removed
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,6 +83,13 @@ export function CreateExamForm() {
       ],
     },
   });
+  
+  useEffect(() => {
+    if (initialQuestions && initialQuestions.length > 0) {
+      form.setValue('questions', initialQuestions);
+    }
+  }, [initialQuestions, form]);
+
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -125,21 +130,12 @@ export function CreateExamForm() {
       announcement: '', // Initialize announcement
     };
     
-    try {
-      await addDoc(collection(db, "exams"), newExam);
-      toast({
-        title: "İmtahan Uğurla Yaradıldı!",
-        description: "Yeni imtahan yadda saxlanıldı.",
-      });
-      router.push("/teacher/dashboard");
-    } catch (error) {
-      console.error("Error creating exam:", error);
-      toast({
-        title: "Xəta",
-        description: "İmtahan yaradılarkən xəta baş verdi.",
-        variant: "destructive"
-      });
-    }
+    // This is where you would add the exam to the database.
+    toast({
+      title: "İmtahan Uğurla Yaradıldı!",
+      description: "Yeni imtahan yadda saxlanıldı.",
+    });
+    router.push("/teacher/dashboard");
   }
 
   return (

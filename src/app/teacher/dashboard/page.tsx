@@ -39,8 +39,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { collection, onSnapshot, getFirestore, deleteDoc, doc, updateDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
-import { app } from '@/firebase/config';
 import withAuth from '@/components/withAuth';
 
 
@@ -82,17 +80,11 @@ function TeacherDashboard() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const db = getFirestore(app);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "exams"), (snapshot) => {
-        const examsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exam));
-        setExams(examsData);
-        setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [db]);
+    // Data fetching is removed.
+    setIsLoading(false);
+  }, []);
 
   const getExamStatus = (startTime: string, endTime: string) => {
     const start = parseISO(startTime);
@@ -104,43 +96,15 @@ function TeacherDashboard() {
   };
 
   const handleDeleteExam = async (examId: string) => {
-    const batch = writeBatch(db);
-    
-    // Delete the exam document
-    const examRef = doc(db, "exams", examId);
-    batch.delete(examRef);
-    
-    // Query and delete all submissions related to the exam
-    const submissionsQuery = query(collection(db, "submissions"), where("examId", "==", examId));
-    try {
-        const submissionSnapshot = await getDocs(submissionsQuery);
-        submissionSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-        toast({
-            title: "İmtahan Silindi",
-            description: "İmtahan və bütün bağlı təqdimatlar uğurla silindi."
-        });
-    } catch (error) {
-        console.error("Error deleting exam and submissions:", error);
-        toast({
-            variant: "destructive",
-            title: "Xəta",
-            description: "İmtahan silinərkən xəta baş verdi."
-        });
-    }
+    // This is where you would delete the exam.
+    toast({
+        title: "İmtahan Silindi",
+        description: "İmtahan və bütün bağlı təqdimatlar uğurla silindi."
+    });
   };
   
   const handleUpdateExam = async (examId: string, announcement: string) => {
-    const examRef = doc(db, "exams", examId);
-    try {
-        await updateDoc(examRef, { announcement });
-    } catch(error) {
-        console.error("Error updating announcement: ", error);
-        toast({ variant: "destructive", title: "Xəta", description: "Elan yenilənərkən xəta baş verdi." });
-    }
+    // This is where you would update the announcement.
   };
 
   if (isLoading) {

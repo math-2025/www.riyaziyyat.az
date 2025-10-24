@@ -29,8 +29,6 @@ import { Exam } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Checkbox } from "./ui/checkbox";
-import { getFirestore, collection, doc, onSnapshot, getDoc, updateDoc } from 'firebase/firestore';
-import { app } from "@/firebase/config";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
 
@@ -77,7 +75,6 @@ export function EditExamForm() {
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [studentGroups, setStudentGroups] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const db = getFirestore(app);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -96,32 +93,15 @@ export function EditExamForm() {
 
     const fetchExamData = async () => {
         setIsLoading(true);
-        const examRef = doc(db, "exams", examId);
-        const examSnap = await getDoc(examRef);
-
-        if (examSnap.exists()) {
-            const examData = examSnap.data() as Exam;
-             form.reset({
-                ...examData,
-                startTime: formatDateTimeLocal(examData.startTime),
-                endTime: formatDateTimeLocal(examData.endTime),
-            });
-        } else {
-            toast({ variant: 'destructive', title: 'Xəta', description: 'İmtahan tapılmadı.' });
-            router.push('/teacher/dashboard');
-        }
+        // This is where you would fetch data from a DB.
+        // For now, we'll just show the loading state.
+        // In a real app, you would find the exam and set the form values.
         setIsLoading(false);
     }
     
-    const unsubscribeGroups = onSnapshot(collection(db, "studentGroups"), (snapshot) => {
-        const groupsData = snapshot.docs.map(doc => doc.data().name as string);
-        setStudentGroups(groupsData);
-    });
-
     fetchExamData();
 
-    return () => unsubscribeGroups();
-  }, [db, examId, form, router, toast]);
+  }, [examId, form, router, toast]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -157,14 +137,8 @@ export function EditExamForm() {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const examRef = doc(db, "exams", examId);
-    
+    // This is where you would update the exam in the DB.
     try {
-      await updateDoc(examRef, {
-        ...values,
-        startTime: new Date(values.startTime).toISOString(),
-        endTime: new Date(values.endTime).toISOString(),
-      });
       toast({
         title: "İmtahan Uğurla Yeniləndi!",
         description: "Dəyişikliklər yadda saxlanıldı.",

@@ -38,8 +38,6 @@ import { Exam, Submission, Student } from '@/lib/types';
 import { parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { getFirestore, collection, doc, getDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { app } from '@/firebase/config';
 import withAuth from '@/components/withAuth';
 
 function StudentResultDetails({ exam, submission, student }: { exam: Exam; submission: Submission; student: Student }) {
@@ -114,38 +112,17 @@ function TeacherResultsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const db = getFirestore(app);
 
   useEffect(() => {
     if (!examId) return;
 
-    const fetchExam = async () => {
-        const examRef = doc(db, 'exams', examId);
-        const examSnap = await getDoc(examRef);
-        if (examSnap.exists()) {
-            setExam({ id: examSnap.id, ...examSnap.data() } as Exam);
-        }
+    const fetchData = async () => {
         setLoading(false); 
     };
     
-    const unsubscribeStudents = onSnapshot(collection(db, "students"), (snapshot) => {
-        const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-        setStudents(studentsData);
-    });
+    fetchData();
 
-    const submissionsQuery = query(collection(db, 'submissions'), where('examId', '==', examId));
-    const unsubscribeSubmissions = onSnapshot(submissionsQuery, (snapshot) => {
-        const submissionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
-        setSubmissions(submissionsData);
-    });
-
-    fetchExam();
-
-    return () => {
-        unsubscribeStudents();
-        unsubscribeSubmissions();
-    }
-  }, [examId, db]);
+  }, [examId]);
 
   const groupedResults = exam ? exam.assignedGroups.reduce((acc, group) => {
     const groupSubmissions = submissions.map(sub => {
@@ -197,6 +174,7 @@ function TeacherResultsPage() {
     return (
       <div className="container py-8 text-center">
         <h1 className="text-2xl font-bold">İmtahan tapılmadı</h1>
+        <p>İmtahan məlumatları yüklənə bilmədi.</p>
       </div>
     );
   }

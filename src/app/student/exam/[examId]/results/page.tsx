@@ -10,8 +10,6 @@ import { useEffect, useState } from 'react';
 import { Student, Submission, Exam } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { getFirestore, getDoc, getDocs, collection, query, where, doc } from 'firebase/firestore';
-import { app } from '@/firebase/config';
 import withAuth from '@/components/withAuth';
 
 function ExamResultsPage() {
@@ -21,7 +19,6 @@ function ExamResultsPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
-  const db = getFirestore(app);
 
   useEffect(() => {
     const studentData = localStorage.getItem('currentStudent');
@@ -31,30 +28,14 @@ function ExamResultsPage() {
 
       const fetchData = async () => {
         setLoading(true);
-        // Fetch exam
-        const examRef = doc(db, "exams", examId);
-        const examSnap = await getDoc(examRef);
-        if (examSnap.exists()) {
-          setExam({ id: examSnap.id, ...examSnap.data() } as Exam);
-        }
-
-        // Fetch submission
-        const submissionsRef = collection(db, "submissions");
-        const q = query(submissionsRef, where("examId", "==", examId), where("studentId", "==", parsedStudent.id));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          const subDoc = querySnapshot.docs[0];
-          setSubmission({ id: subDoc.id, ...subDoc.data() } as Submission);
-        }
-        
+        // Mock data fetching. Replace with actual API calls.
         setLoading(false);
       }
       fetchData();
     } else {
         setLoading(false);
     }
-  }, [examId, db]);
+  }, [examId]);
 
   if (loading) {
     return (

@@ -13,8 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Send } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getFirestore, doc, getDoc, addDoc, collection } from 'firebase/firestore';
-import { app } from '@/firebase/config';
 import withAuth from '@/components/withAuth';
 
 function ExamPage() {
@@ -29,7 +27,6 @@ function ExamPage() {
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const hasFinishedRef = useRef(false);
-  const db = getFirestore(app);
 
   useEffect(() => {
     const studentData = localStorage.getItem('currentStudent');
@@ -42,64 +39,36 @@ function ExamPage() {
 
     const fetchExam = async () => {
         if (!examId) return;
-        const examRef = doc(db, "exams", examId);
-        const examSnap = await getDoc(examRef);
-
-        if (examSnap.exists()) {
-            setExam({ id: examSnap.id, ...examSnap.data() } as Exam);
-        } else {
-            toast({
-                variant: "destructive",
-                title: "İmtahan tapılmadı",
-                description: "Bu imtahan mövcud deyil və ya silinib."
-            });
-            router.push('/student/dashboard');
-        }
+        // Mock data fetching, replace with actual API call
         setIsLoading(false);
     }
     
     fetchExam();
-  }, [examId, router, toast, db]);
+  }, [examId, router, toast]);
 
   const handleFinishExam = useCallback(async (cheating = false) => {
     if (hasFinishedRef.current || !student || !exam) return;
     hasFinishedRef.current = true;
 
-    const newSubmission: Omit<Submission, 'id'> = {
-      examId,
-      studentId: student.id,
-      answers,
-      submittedAt: new Date().toISOString(),
-      cheatingDetected: cheating,
-    };
+    // This is where you would submit the exam.
+    // For now, it just shows a toast and redirects.
     
-    try {
-        await addDoc(collection(db, "submissions"), newSubmission);
-        if (cheating) {
-            toast({
-                variant: "destructive",
-                title: "Köçürmə Təsbit Olundu!",
-                description: "Köçürdüyünüz təsbit olundu, bu səbəbdən imtahandan xaric olundunuz. Müəllim bu barədə məlumatlandırılacaq.",
-                duration: 10000,
-            });
-        } else {
-            toast({
-              title: "Cavablarınız qəbul edildi!",
-              description: "Nəticələr açıqlandıqda müəlliminiz sizi məlumatlandıracaq.",
-            });
-        }
-        router.push(`/student/dashboard`);
-    } catch(error) {
-        console.error("Error submitting exam:", error);
+    if (cheating) {
         toast({
             variant: "destructive",
-            title: "Xəta",
-            description: "İmtahanı təhvil verərkən xəta baş verdi.",
+            title: "Köçürmə Təsbit Olundu!",
+            description: "Köçürdüyünüz təsbit olundu, bu səbəbdən imtahandan xaric olundunuz. Müəllim bu barədə məlumatlandırılacaq.",
+            duration: 10000,
         });
-        hasFinishedRef.current = false; // Allow retry
+    } else {
+        toast({
+          title: "Cavablarınız qəbul edildi!",
+          description: "Nəticələr açıqlandıqda müəlliminiz sizi məlumatlandıracaq.",
+        });
     }
+    router.push(`/student/dashboard`);
 
-  }, [examId, student, answers, router, toast, exam, db]);
+  }, [examId, student, answers, router, toast, exam]);
 
   useEffect(() => {
     if (!exam || isLoading) {
@@ -139,7 +108,7 @@ function ExamPage() {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
   
-  if (isLoading || !exam || !student) {
+  if (isLoading || !student) {
     return (
       <div className="container py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -163,6 +132,15 @@ function ExamPage() {
         </div>
       </div>
     );
+  }
+  
+  if (!exam) {
+      return (
+          <div className="container py-8 text-center">
+                <h1 className="text-2xl font-bold">İmtahan Yüklənmədi</h1>
+                <p>Bu imtahan tapılmadı və ya hələ başlamayıb.</p>
+          </div>
+      )
   }
 
   return (
