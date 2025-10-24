@@ -16,11 +16,8 @@ export default function Home() {
           <span className="text-xl font-bold">Riyaziyyat Testi</span>
         </Link>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Daxil ol</Link>
-          </Button>
           <Button asChild>
-            <Link href="/signup">Qeydiyyat <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link href="/login">Daxil ol <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </div>
       </header>
@@ -36,7 +33,7 @@ export default function Home() {
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button size="lg" asChild>
-                <Link href="/signup">İndi Başla <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                <Link href="/login">İndi Başla <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
             </div>
           </div>
