@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -239,6 +240,12 @@ function ExamResultsPage() {
   const totalPossibleScore = totalQuestions * exam.pointsPerQuestion;
   const percentage = totalPossibleScore > 0 && score >= 0 ? (score / totalPossibleScore) * 100 : 0;
   const correctCount = score >= 0 ? score / exam.pointsPerQuestion : 0;
+  
+  const isAppealPeriodActive = () => {
+      const examEndTime = new Date(exam.endTime);
+      const oneDayAfter = new Date(examEndTime.getTime() + 24 * 60 * 60 * 1000);
+      return new Date() < oneDayAfter;
+  }
 
 
   return (
@@ -283,6 +290,7 @@ function ExamResultsPage() {
                 const studentAnswer = submission.answers[q.id] || 'Cavablandırılmayıb';
                 const isCorrect = studentAnswer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
                 const existingAppeal = appeals.find(a => a.questionId === q.id);
+                const canAppeal = !isCorrect && score >= 0 && !submission.cheatingDetected && isAppealPeriodActive();
 
                 return (
                   <Card key={q.id}>
@@ -316,7 +324,7 @@ function ExamResultsPage() {
                                 <p className="p-3 bg-green-100 dark:bg-green-900/50 rounded-md">{q.correctAnswer}</p>
                             </div>
                         )}
-                         {!isCorrect && score >= 0 && !submission.cheatingDetected && (
+                         {canAppeal && (
                              <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" size="sm" className="mt-4">

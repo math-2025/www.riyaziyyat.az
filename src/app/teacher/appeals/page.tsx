@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileQuestion, Loader } from "lucide-react";
 import { Appeal } from "@/lib/types";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { az } from "date-fns/locale";
 import withAuth from "@/components/withAuth";
 import { getFirestore, collection, onSnapshot, doc, updateDoc, getDoc, getDocs, query, where } from "firebase/firestore";
@@ -38,7 +38,17 @@ function TeacherAppealsPage() {
     setLoading(true);
     const appealsQuery = collection(db, "appeals");
     const unsubscribe = onSnapshot(appealsQuery, (snapshot) => {
-      const appealsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Appeal));
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const appealsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Appeal))
+        .filter(appeal => {
+          // Keep all pending appeals
+          if (appeal.status === 'pending') {
+            return true;
+          }
+          // Keep processed appeals from the last 7 days
+          return appeal.createdAt > sevenDaysAgo;
+        });
+
       appealsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setAppeals(appealsData);
       setLoading(false);
@@ -118,14 +128,12 @@ function TeacherAppealsPage() {
           
           <AccordionItem value="pending">
              <Card>
-                <CardHeader>
-                    <AccordionTrigger className="w-full p-0">
-                        <CardTitle className="flex items-center gap-3">
-                             <Badge variant="outline">{filteredAppeals('pending').length}</Badge>
-                            Gözləyən Müraciətlər
-                        </CardTitle>
-                    </AccordionTrigger>
-                </CardHeader>
+                <AccordionTrigger className="w-full p-6">
+                    <CardTitle className="flex items-center gap-3">
+                         <Badge variant="outline">{filteredAppeals('pending').length}</Badge>
+                        Gözləyən Müraciətlər
+                    </CardTitle>
+                </AccordionTrigger>
                 <AccordionContent>
                     <CardContent>
                         {filteredAppeals('pending').length === 0 ? <p className="text-muted-foreground p-4 text-center">Gözləyən müraciət yoxdur.</p> :
@@ -169,14 +177,12 @@ function TeacherAppealsPage() {
           
           <AccordionItem value="approved">
              <Card>
-                <CardHeader>
-                    <AccordionTrigger className="w-full p-0">
-                        <CardTitle className="flex items-center gap-3">
-                             <Badge>{filteredAppeals('approved').length}</Badge>
-                            Təsdiqlənmiş Müraciətlər
-                        </CardTitle>
-                    </AccordionTrigger>
-                </CardHeader>
+                <AccordionTrigger className="w-full p-6">
+                    <CardTitle className="flex items-center gap-3">
+                         <Badge>{filteredAppeals('approved').length}</Badge>
+                            Təsdiqlənmiş Müraciətlər (Son 7 gün)
+                    </CardTitle>
+                </AccordionTrigger>
                  <AccordionContent>
                     <CardContent>
                         {filteredAppeals('approved').length === 0 ? <p className="text-muted-foreground p-4 text-center">Təsdiqlənmiş müraciət yoxdur.</p> :
@@ -202,14 +208,12 @@ function TeacherAppealsPage() {
           
           <AccordionItem value="rejected">
                <Card>
-                <CardHeader>
-                    <AccordionTrigger className="w-full p-0">
+                <AccordionTrigger className="w-full p-6">
                          <CardTitle className="flex items-center gap-3">
                              <Badge variant="destructive">{filteredAppeals('rejected').length}</Badge>
-                            Rədd Edilmiş Müraciətlər
+                            Rədd Edilmiş Müraciətlər (Son 7 gün)
                         </CardTitle>
-                    </AccordionTrigger>
-                </CardHeader>
+                </AccordionTrigger>
                  <AccordionContent>
                     <CardContent>
                         {filteredAppeals('rejected').length === 0 ? <p className="text-muted-foreground p-4 text-center">Rədd edilmiş müraciət yoxdur.</p> :
