@@ -1,7 +1,11 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,63 +14,80 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon } from "lucide-react";
+} from '@/components/ui/dropdown-menu';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { Student } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
-interface UserNavProps {
-  email?: string | null;
-  name?: string | null;
-}
+type UserNavProps = {
+  userType: 'teacher' | 'student';
+};
 
-export function UserNav({ email, name }: UserNavProps) {
+export function UserNav({ userType }: UserNavProps) {
   const router = useRouter();
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userSubtitle, setUserSubtitle] = useState('');
 
-  const getInitials = (name?: string | null) => {
-    if (!name) return 'A';
-    // Logic to get initials from "Anar müəllim" -> AM
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return names[0][0] + names[1][0];
+  useEffect(() => {
+    if (userType === 'teacher') {
+      setUserName('Dr. Anar Hüseynov');
+      setUserEmail('anar.huseynov'); // this is used for avatar generation
+    } else if (userType === 'student') {
+      const studentData = localStorage.getItem('currentStudent');
+      if (studentData) {
+        const student: Student = JSON.parse(studentData);
+        setUserName(student.name);
+        setUserEmail(student.email || student.id);
+        setUserSubtitle(`Qrup: ${student.group}`);
+      }
     }
-    return name.substring(0, 1);
-  };
-
+  }, [userType]);
+  
   const handleLogout = () => {
-    router.push('/login');
-  };
+    localStorage.removeItem("currentStudent");
+    router.push('/');
+  }
+
+  const initials = userName ? userName.split(' ').map(n => n[0]).join('') : '';
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary text-primary-foreground font-bold">
-              {getInitials(name)}
-            </AvatarFallback>
+            <AvatarImage src={`https://avatar.vercel.sh/${userEmail}.png`} alt={`@${userName}`} />
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{name || 'İstifadəçi'}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {email}
-            </p>
+            <p className="text-sm font-medium leading-none">{userName}</p>
+            {userSubtitle ? (
+               <p className="text-xs leading-none text-muted-foreground">
+                {userSubtitle}
+               </p>
+            ) : (
+               <p className="text-xs leading-none text-muted-foreground">
+                {userEmail}
+              </p>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem disabled>
-            <UserIcon className="mr-2 h-4 w-4" />
-            <span>Profil</span>
+          <DropdownMenuItem asChild>
+            <Link href={userType === 'teacher' ? '/teacher/dashboard' : '/student/dashboard'}>
+                İdarə Paneli
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Çıxış</span>
+        <DropdownMenuItem onClick={handleLogout}>
+            Çıxış
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
