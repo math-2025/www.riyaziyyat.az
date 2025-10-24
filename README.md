@@ -13,3 +13,5 @@
 # riyaziyyat.az
 # riyaziyyat.az
 # riyaziyyat.az
+# www.riyaziyyat.az
+# www.riyaziyyat.az
