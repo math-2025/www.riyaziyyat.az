@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -391,7 +392,7 @@ function StudentManagementPage() {
                                             <FormItem><FormLabel>İstifadəçi Adı</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={editStudentForm.control} name="pass" render={({ field }) => (
-                                            <FormItem><FormLabel>Şifrə</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                                            <FormItem><FormLabel>Şifrə</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={editStudentForm.control} name="cls" render={({ field }) => (
                                             <FormItem><FormLabel>Sinif</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -532,5 +533,7 @@ function StudentManagementPage() {
 }
 
 export default withAuth(StudentManagementPage, ['teacher']);
+
+    
 
     
