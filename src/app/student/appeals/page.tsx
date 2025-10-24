@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader, FileQuestion } from "lucide-react";
 import { Appeal, Student } from "@/lib/types";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { az } from "date-fns/locale";
 import withAuth from "@/components/withAuth";
 import { getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
@@ -32,7 +33,11 @@ function StudentAppealsPage() {
       setLoading(true);
       const appealsQuery = query(collection(db, "appeals"), where("studentId", "==", parsedStudent.id));
       const unsubscribe = onSnapshot(appealsQuery, (snapshot) => {
-        const appealsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Appeal));
+        const sevenDaysAgo = subDays(new Date(), 7);
+        const appealsData = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() } as Appeal))
+            .filter(appeal => new Date(appeal.createdAt) > sevenDaysAgo);
+        
         appealsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setAppeals(appealsData);
         setLoading(false);
@@ -53,7 +58,7 @@ function StudentAppealsPage() {
         <FileQuestion className="h-10 w-10 text-primary" />
         <div>
           <h1 className="font-headline text-4xl font-bold">Apelyasiya Müraciətlərim</h1>
-          <p className="text-muted-foreground text-lg">Müraciətlərinizin vəziyyətini buradan izləyin.</p>
+          <p className="text-muted-foreground text-lg">Müraciətlərinizin vəziyyətini buradan izləyin (Son 7 gün).</p>
         </div>
       </div>
 
@@ -65,7 +70,7 @@ function StudentAppealsPage() {
       ) : appeals.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Heç bir apelyasiya müraciətiniz yoxdur.</p>
+            <p className="text-muted-foreground">Son 7 gündə heç bir apelyasiya müraciətiniz yoxdur.</p>
           </CardContent>
         </Card>
       ) : (

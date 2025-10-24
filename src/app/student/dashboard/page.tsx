@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -74,10 +75,12 @@ function StudentDashboard() {
     }
   }, [db]);
   
-  const announcements = studentExams.filter(exam => exam.announcement).map(exam => ({
-    examTitle: exam.title,
-    announcement: exam.announcement
-  }));
+  const announcements = studentExams
+    .filter(exam => exam.announcement && isFuture(parseISO(exam.endTime)))
+    .map(exam => ({
+        examTitle: exam.title,
+        announcement: exam.announcement
+    }));
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">
@@ -137,7 +140,7 @@ function StudentDashboard() {
             <Accordion type="single" collapsible className="w-full">
               {announcements.map((item, index) => (
                 <AccordionItem value={`item-${index}`} key={index}>
-                  <AccordionTrigger className="font-semibold">{item.examTitle}</AccordionTrigger>
+                  <AccordionTrigger className="font-semibold no-underline">{item.examTitle}</AccordionTrigger>
                   <AccordionContent>
                     {item.announcement}
                   </AccordionContent>

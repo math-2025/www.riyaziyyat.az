@@ -38,16 +38,10 @@ function TeacherAppealsPage() {
     setLoading(true);
     const appealsQuery = collection(db, "appeals");
     const unsubscribe = onSnapshot(appealsQuery, (snapshot) => {
-      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
-      const appealsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Appeal))
-        .filter(appeal => {
-          // Keep all pending appeals
-          if (appeal.status === 'pending') {
-            return true;
-          }
-          // Keep processed appeals from the last 7 days
-          return appeal.createdAt > sevenDaysAgo;
-        });
+      const sevenDaysAgo = subDays(new Date(), 7);
+      const appealsData = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() } as Appeal))
+        .filter(appeal => new Date(appeal.createdAt) > sevenDaysAgo);
 
       appealsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setAppeals(appealsData);
@@ -114,7 +108,7 @@ function TeacherAppealsPage() {
         <FileQuestion className="h-10 w-10 text-primary" />
         <div>
           <h1 className="font-headline text-4xl font-bold">Apelyasiya Müraciətləri</h1>
-          <p className="text-muted-foreground text-lg">Şagirdlərin imtahan nəticələri ilə bağlı müraciətlərini idarə edin.</p>
+          <p className="text-muted-foreground text-lg">Şagirdlərin imtahan nəticələri ilə bağlı müraciətlərini idarə edin (Son 7 gün).</p>
         </div>
       </div>
 
@@ -128,7 +122,7 @@ function TeacherAppealsPage() {
           
           <AccordionItem value="pending">
              <Card>
-                <AccordionTrigger className="w-full p-6">
+                <AccordionTrigger className="w-full p-6 no-underline">
                     <CardTitle className="flex items-center gap-3">
                          <Badge variant="outline">{filteredAppeals('pending').length}</Badge>
                         Gözləyən Müraciətlər
@@ -177,10 +171,10 @@ function TeacherAppealsPage() {
           
           <AccordionItem value="approved">
              <Card>
-                <AccordionTrigger className="w-full p-6">
+                <AccordionTrigger className="w-full p-6 no-underline">
                     <CardTitle className="flex items-center gap-3">
                          <Badge>{filteredAppeals('approved').length}</Badge>
-                            Təsdiqlənmiş Müraciətlər (Son 7 gün)
+                            Təsdiqlənmiş Müraciətlər
                     </CardTitle>
                 </AccordionTrigger>
                  <AccordionContent>
@@ -208,10 +202,10 @@ function TeacherAppealsPage() {
           
           <AccordionItem value="rejected">
                <Card>
-                <AccordionTrigger className="w-full p-6">
+                <AccordionTrigger className="w-full p-6 no-underline">
                          <CardTitle className="flex items-center gap-3">
                              <Badge variant="destructive">{filteredAppeals('rejected').length}</Badge>
-                            Rədd Edilmiş Müraciətlər (Son 7 gün)
+                            Rədd Edilmiş Müraciətlər
                         </CardTitle>
                 </AccordionTrigger>
                  <AccordionContent>
