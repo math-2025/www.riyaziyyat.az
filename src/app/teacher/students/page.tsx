@@ -109,21 +109,8 @@ function StudentManagementPage() {
     });
 
     const unsubscribeGroups = onSnapshot(collection(db, "studentGroups"), (snapshot) => {
-        if (snapshot.empty) {
-            const initialGroups = ["10(1,3)", "10(2,4)", "9(1,3)", "10S"];
-            const batch = writeBatch(db);
-            initialGroups.forEach(groupName => {
-                const docRef = doc(collection(db, "studentGroups"));
-                batch.set(docRef, { name: groupName });
-            });
-            batch.commit().catch(error => {
-                 console.error("Error creating initial groups:", error);
-                 toast({ title: "Xəta", description: "İlkin qruplar yaradılarkən xəta baş verdi.", variant: "destructive" });
-            });
-        } else {
-            const groupsData = snapshot.docs.map(doc => doc.data().name as string);
-            setGroups(groupsData);
-        }
+        const groupsData = snapshot.docs.map(doc => doc.data().name as string);
+        setGroups(groupsData);
     });
 
     return () => {
