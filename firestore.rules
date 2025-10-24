@@ -1,31 +1,8 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow public read access to exams
-    match /exams/{examId} {
-      allow read, write: if true;
-    }
-
-    // Allow read/write access to student groups
-    match /studentGroups/{groupId} {
-        allow read, write: if true;
-    }
-
-    // Allow read/write access to students data
-    match /students/{studentId} {
-        allow read, write: if true;
-    }
-
-    // Allow read/write access to submissions
-    match /submissions/{submissionId} {
-        allow read, write: if true;
-    }
-
-    // A catch-all rule to deny access to any other collection
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

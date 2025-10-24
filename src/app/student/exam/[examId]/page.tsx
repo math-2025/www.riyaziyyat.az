@@ -14,12 +14,15 @@ import { ArrowLeft, Send } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import withAuth from '@/components/withAuth';
+import { getFirestore, doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 function ExamPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   const examId = params.examId as string;
+  const db = getFirestore(app);
   
   const [exam, setExam] = useState<Exam | null>(null);
   const [student, setStudent] = useState<Student | null>(null);
@@ -39,36 +42,64 @@ function ExamPage() {
 
     const fetchExam = async () => {
         if (!examId) return;
-        // Mock data fetching, replace with actual API call
-        setIsLoading(false);
+        setIsLoading(true);
+        try {
+            const examRef = doc(db, "exams", examId);
+            const examSnap = await getDoc(examRef);
+            if (examSnap.exists()) {
+                setExam({ id: examSnap.id, ...examSnap.data() } as Exam);
+            } else {
+                toast({ title: "Xəta", description: "İmtahan tapılmadı.", variant: 'destructive' });
+                router.push('/student/dashboard');
+            }
+        } catch (error) {
+            console.error("Error fetching exam:", error);
+            toast({ title: "Xəta", description: "İmtahan məlumatları yüklənərkən xəta baş verdi.", variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
     }
     
     fetchExam();
-  }, [examId, router, toast]);
+  }, [examId, router, toast, db]);
 
   const handleFinishExam = useCallback(async (cheating = false) => {
     if (hasFinishedRef.current || !student || !exam) return;
     hasFinishedRef.current = true;
 
-    // This is where you would submit the exam.
-    // For now, it just shows a toast and redirects.
-    
-    if (cheating) {
-        toast({
-            variant: "destructive",
-            title: "Köçürmə Təsbit Olundu!",
-            description: "Köçürdüyünüz təsbit olundu, bu səbəbdən imtahandan xaric olundunuz. Müəllim bu barədə məlumatlandırılacaq.",
-            duration: 10000,
-        });
-    } else {
-        toast({
-          title: "Cavablarınız qəbul edildi!",
-          description: "Nəticələr açıqlandıqda müəlliminiz sizi məlumatlandıracaq.",
-        });
-    }
-    router.push(`/student/dashboard`);
+    try {
+        const submissionData: Omit<Submission, 'id'> = {
+            examId: exam.id,
+            studentId: student.id,
+            answers,
+            submittedAt: new Date().toISOString(),
+            cheatingDetected: cheating,
+            score: -1 // Will be calculated later by teacher or a cloud function
+        };
 
-  }, [examId, student, answers, router, toast, exam]);
+        await addDoc(collection(db, 'submissions'), submissionData);
+
+        if (cheating) {
+            toast({
+                variant: "destructive",
+                title: "Köçürmə Təsbit Olundu!",
+                description: "Köçürdüyünüz təsbit olundu, bu səbəbdən imtahandan xaric olundunuz. Müəllim bu barədə məlumatlandırılacaq.",
+                duration: 10000,
+            });
+        } else {
+            toast({
+              title: "Cavablarınız qəbul edildi!",
+              description: "Nəticələr açıqlandıqda müəlliminiz sizi məlumatlandıracaq.",
+            });
+        }
+    } catch (error) {
+        console.error("Error submitting exam:", error);
+        toast({ title: "Xəta", description: "İmtahan təhvil verilərkən xəta baş verdi.", variant: 'destructive' });
+    } finally {
+        router.push(`/student/dashboard`);
+    }
+
+  }, [exam, student, answers, router, toast, db]);
 
   useEffect(() => {
     if (!exam || isLoading) {

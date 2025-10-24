@@ -40,6 +40,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import withAuth from '@/components/withAuth';
+import { getFirestore, collection, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 
 function AnnounceDialog({ exam, onUpdate }: { exam: Exam, onUpdate: (examId: string, announcement: string) => void}) {
@@ -80,11 +82,22 @@ function TeacherDashboard() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const db = getFirestore(app);
 
   useEffect(() => {
-    // Data fetching is removed.
-    setIsLoading(false);
-  }, []);
+    const q = collection(db, "exams");
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const examsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exam));
+      setExams(examsData);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching exams: ", error);
+      toast({ title: "Xəta", description: "İmtahanlar yüklənərkən problem yarandı.", variant: 'destructive'});
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [db, toast]);
 
   const getExamStatus = (startTime: string, endTime: string) => {
     const start = parseISO(startTime);
@@ -96,15 +109,27 @@ function TeacherDashboard() {
   };
 
   const handleDeleteExam = async (examId: string) => {
-    // This is where you would delete the exam.
-    toast({
-        title: "İmtahan Silindi",
-        description: "İmtahan və bütün bağlı təqdimatlar uğurla silindi."
-    });
+    try {
+        await deleteDoc(doc(db, "exams", examId));
+        // Note: In a real app, you might want to delete related submissions as well.
+        toast({
+            title: "İmtahan Silindi",
+            description: "İmtahan uğurla silindi."
+        });
+    } catch(e) {
+        console.error("Error deleting exam:", e);
+        toast({ title: "Xəta", description: "İmtahan silinərkən problem yarandı.", variant: 'destructive'});
+    }
   };
   
   const handleUpdateExam = async (examId: string, announcement: string) => {
-    // This is where you would update the announcement.
+    try {
+        const examRef = doc(db, "exams", examId);
+        await updateDoc(examRef, { announcement });
+    } catch(e) {
+        console.error("Error updating announcement:", e);
+        toast({ title: "Xəta", description: "Elan yenilənərkən problem yarandı.", variant: 'destructive'});
+    }
   };
 
   if (isLoading) {

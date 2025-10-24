@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -65,6 +64,8 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import withAuth from "@/components/withAuth";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { app } from "@/firebase/config";
 
 
 // Schemas
@@ -91,18 +92,32 @@ const addGroupSchema = z.object({
 
 function StudentManagementPage() {
   const { toast } = useToast();
+  const db = getFirestore(app);
 
   const [students, setStudents] = useState<Student[]>([]);
-  const [groups, setGroups] = useState<string[]>([]);
+  const [groups, setGroups] = useState<{ id: string, name: string }[]>([]);
   const [newStudentCreds, setNewStudentCreds] = useState<{email: string, pass: string} | null>(null);
   const [viewingCredsFor, setViewingCredsFor] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Data fetching removed
-    setIsLoading(false);
-  }, [toast]);
+    const unsubStudents = onSnapshot(collection(db, "students"), (snapshot) => {
+        const studentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+        setStudents(studentsList);
+        setIsLoading(false);
+    });
+
+    const unsubGroups = onSnapshot(collection(db, "studentGroups"), (snapshot) => {
+        const groupsList = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name as string }));
+        setGroups(groupsList);
+    });
+
+    return () => {
+        unsubStudents();
+        unsubGroups();
+    };
+  }, [db]);
 
   // Add Student Form
   const addStudentForm = useForm<z.infer<typeof addStudentSchema>>({
@@ -132,8 +147,7 @@ function StudentManagementPage() {
     const studentUsername = `${data.name.toLowerCase().replace(/\s/g, '')}${data.surname.toLowerCase().replace(/\s/g, '')}${Math.floor(10 + Math.random() * 90)}`;
     const studentPass = nanoid(8);
 
-    const newStudent: Student = {
-        id: nanoid(),
+    const newStudent: Omit<Student, 'id'> = {
         name: `${data.name} ${data.surname}`,
         cls: data.cls,
         parent: data.parentContact,
@@ -143,19 +157,29 @@ function StudentManagementPage() {
         status: 'active',
     };
     
-    setStudents(prev => [...prev, newStudent]);
-    setNewStudentCreds({ email: studentUsername, pass: studentPass });
-    addStudentForm.reset();
-    toast({ title: "Şagird əlavə edildi", description: `${newStudent.name} əlavə edildi.` });
-
+    try {
+        await addDoc(collection(db, 'students'), newStudent);
+        setNewStudentCreds({ email: studentUsername, pass: studentPass });
+        addStudentForm.reset();
+        toast({ title: "Şagird əlavə edildi", description: `${newStudent.name} əlavə edildi.` });
+    } catch (e) {
+        console.error(e);
+        toast({ title: "Xəta", description: "Şagird əlavə edilərkən xəta baş verdi.", variant: 'destructive'});
+    }
   }
 
   async function onEditStudent(data: z.infer<typeof editStudentSchema>) {
     if (!editingStudent) return;
     
-    setStudents(prev => prev.map(s => s.id === editingStudent.id ? {...s, ...data} : s));
-    setEditingStudent(null);
-    toast({ title: "Şagird Yeniləndi", description: `${data.name} üçün məlumatlar yeniləndi.` });
+    try {
+        const studentRef = doc(db, 'students', editingStudent.id);
+        await updateDoc(studentRef, data as Partial<Student>);
+        setEditingStudent(null);
+        toast({ title: "Şagird Yeniləndi", description: `${data.name} üçün məlumatlar yeniləndi.` });
+    } catch(e) {
+        console.error(e);
+        toast({ title: "Xəta", description: "Şagird yenilənərkən xəta baş verdi.", variant: 'destructive'});
+    }
   }
 
   // Group Form
@@ -165,29 +189,40 @@ function StudentManagementPage() {
   });
 
   async function onAddGroup(data: z.infer<typeof addGroupSchema>) {
-    if (groups.includes(data.groupName)) {
+    if (groups.some(g => g.name === data.groupName)) {
         groupForm.setError("groupName", { type: "manual", message: "Qrup artıq mövcuddur."});
         return;
     }
-    setGroups(prev => [...prev, data.groupName]);
-    groupForm.reset();
-    toast({ title: "Qrup əlavə edildi", description: `"${data.groupName}" qrupu yaradıldı.` });
+
+    try {
+        await addDoc(collection(db, 'studentGroups'), { name: data.groupName });
+        groupForm.reset();
+        toast({ title: "Qrup əlavə edildi", description: `"${data.groupName}" qrupu yaradıldı.` });
+    } catch(e) {
+        console.error(e);
+        toast({ title: "Xəta", description: "Qrup əlavə edilərkən xəta baş verdi.", variant: 'destructive'});
+    }
   }
 
-  const handleDeleteGroup = async (groupNameToDelete: string) => {
-    const isGroupInUse = students.some(student => student.group === groupNameToDelete);
+  const handleDeleteGroup = async (groupId: string, groupName: string) => {
+    const isGroupInUse = students.some(student => student.group === groupName);
 
     if (isGroupInUse) {
       toast({
         variant: "destructive",
         title: "Qrupu Silmək Olmur",
-        description: `"${groupNameToDelete}" qrupunda şagirdlər var. Zəhmət olmasa, silməzdən əvvəl şagirdləri başqa qrupa təyin edin.`,
+        description: `"${groupName}" qrupunda şagirdlər var. Zəhmət olmasa, silməzdən əvvəl şagirdləri başqa qrupa təyin edin.`,
       });
       return;
     }
 
-    setGroups(prev => prev.filter(g => g !== groupNameToDelete));
-    toast({ title: "Qrup Silindi", description: `"${groupNameToDelete}" qrupu silindi.` });
+    try {
+        await deleteDoc(doc(db, 'studentGroups', groupId));
+        toast({ title: "Qrup Silindi", description: `"${groupName}" qrupu silindi.` });
+    } catch (e) {
+        console.error(e);
+        toast({ title: "Xəta", description: "Qrup silinərkən xəta baş verdi.", variant: 'destructive'});
+    }
   };
   
   const copyToClipboard = (text: string) => {
@@ -195,31 +230,36 @@ function StudentManagementPage() {
     toast({ title: "Kopyalandı!", description: "Məlumatlar müvəffəqiyyətlə kopyalandı." });
   }
 
-  const handleToggleStudentStatus = async (studentId: string) => {
-    setStudents(prev => prev.map(s => {
-      if (s.id === studentId) {
-        const newStatus = s.status === 'active' ? 'disabled' : 'active';
+  const handleToggleStudentStatus = async (student: Student) => {
+    const newStatus = student.status === 'active' ? 'disabled' : 'active';
+    try {
+        const studentRef = doc(db, 'students', student.id);
+        await updateDoc(studentRef, { status: newStatus });
         toast({
             title: `Şagird ${newStatus === 'active' ? 'Aktiv Edildi' : 'Deaktiv Edildi'}`,
-            description: `${s.name} adlı şagirdin hesabı ${newStatus === 'active' ? 'aktiv edildi' : 'deaktiv edildi'}.`,
+            description: `${student.name} adlı şagirdin hesabı ${newStatus === 'active' ? 'aktiv edildi' : 'deaktiv edildi'}.`,
         });
-        return {...s, status: newStatus};
-      }
-      return s;
-    }));
+    } catch(e) {
+        console.error(e);
+        toast({ title: "Xəta", description: "Status yenilənərkən xəta baş verdi.", variant: 'destructive'});
+    }
   }
 
   const handleRemoveStudent = async (studentId: string) => {
     const studentToRemove = students.find((s) => s.id === studentId);
     if (!studentToRemove) return;
     
-    setStudents(prev => prev.filter(s => s.id !== studentId));
-
-    toast({
-        variant: "destructive",
-        title: "Şagird Silindi",
-        description: `${studentToRemove.name} və bütün təqdimatları sistemdən tamamilə silindi.`,
-    });
+    try {
+      await deleteDoc(doc(db, 'students', studentId));
+      toast({
+          variant: "destructive",
+          title: "Şagird Silindi",
+          description: `${studentToRemove.name} sistemdən silindi.`,
+      });
+    } catch(e) {
+      console.error(e);
+      toast({ title: "Xəta", description: "Şagird silinərkən xəta baş verdi.", variant: 'destructive'});
+    }
   };
 
   return (
@@ -264,7 +304,7 @@ function StudentManagementPage() {
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Bir qrup seçin" /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {groups.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                            {groups.map(g => <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -299,8 +339,8 @@ function StudentManagementPage() {
                         <h4 className="font-medium text-sm">Mövcud Qruplar</h4>
                         <div className="space-y-2">
                             {groups.map(group => (
-                                <div key={group} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                                    <span>{group}</span>
+                                <div key={group.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                                    <span>{group.name}</span>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
@@ -316,7 +356,7 @@ function StudentManagementPage() {
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                             <AlertDialogCancel>Ləğv et</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteGroup(group)}>Qrupu Sil</AlertDialogAction>
+                                            <AlertDialogAction onClick={() => handleDeleteGroup(group.id, group.name)}>Qrupu Sil</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
@@ -405,7 +445,7 @@ function StudentManagementPage() {
                                                 <FormLabel>Qrup</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                    <SelectContent>{groups.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                                                    <SelectContent>{groups.map(g => <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>)}</SelectContent>
                                                 </Select>
                                                 <FormMessage />
                                             </FormItem>
@@ -434,7 +474,7 @@ function StudentManagementPage() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Ləğv et</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => { handleToggleStudentStatus(student.id); }}>
+                              <AlertDialogAction onClick={() => { handleToggleStudentStatus(student); }}>
                                 Davam et
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -533,7 +573,3 @@ function StudentManagementPage() {
 }
 
 export default withAuth(StudentManagementPage, ['teacher']);
-
-    
-
-    

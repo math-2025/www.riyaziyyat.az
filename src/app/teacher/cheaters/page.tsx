@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
 import withAuth from '@/components/withAuth';
+import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 
 type CheaterInfo = {
@@ -46,21 +48,61 @@ function CheatersPage() {
     const [cheaters, setCheaters] = useState<CheaterInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
+    const db = getFirestore(app);
 
     useEffect(() => {
         setLoading(true);
-        // Mock data fetching, replace with actual API calls
-        setCheaters([]);
-        setLoading(false);
-    }, []);
+
+        const submissionsQuery = query(collection(db, "submissions"), where("cheatingDetected", "==", true));
+
+        const unsubscribe = onSnapshot(submissionsQuery, async (snapshot) => {
+            const cheatersList: CheaterInfo[] = [];
+
+            for (const subDoc of snapshot.docs) {
+                const submission = { id: subDoc.id, ...subDoc.data() } as Submission;
+
+                const studentRef = doc(db, "students", submission.studentId);
+                const studentSnap = await getDoc(studentRef);
+
+                const examRef = doc(db, "exams", submission.examId);
+                const examSnap = await getDoc(examRef);
+
+                if (studentSnap.exists() && examSnap.exists()) {
+                    const student = studentSnap.data() as Student;
+                    const exam = examSnap.data() as Exam;
+                    cheatersList.push({
+                        submissionId: submission.id,
+                        studentName: student.name,
+                        studentGroup: student.group,
+                        examTitle: exam.title,
+                        submittedAt: new Date(submission.submittedAt).toLocaleString('az-AZ')
+                    });
+                }
+            }
+            setCheaters(cheatersList);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching cheaters:", error);
+            setLoading(false);
+            toast({ variant: 'destructive', title: 'Xəta', description: 'Köçürmə hesabatları yüklənərkən problem yarandı.'});
+        });
+
+        return () => unsubscribe();
+    }, [db, toast]);
 
 
     const handleRemoveCheater = async (submissionId: string) => {
-       // This is where you would update the submission
-       toast({
-          title: "Qeyd Silindi",
-          description: "Köçürmə qeydi siyahıdan uğurla silindi.",
-      });
+       try {
+         const submissionRef = doc(db, 'submissions', submissionId);
+         await updateDoc(submissionRef, { cheatingDetected: false });
+         toast({
+            title: "Qeyd Silindi",
+            description: "Köçürmə qeydi siyahıdan uğurla silindi.",
+        });
+       } catch (error) {
+         console.error("Error removing cheater flag:", error);
+         toast({ variant: 'destructive', title: 'Xəta', description: 'Qeyd silinərkən problem yarandı.'});
+       }
     };
 
   return (

@@ -31,6 +31,8 @@ import Image from "next/image";
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
+import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { app } from "@/firebase/config";
 
 const mathSymbols = ['√', '∛', '²', '³', 'π', 'Σ', '∫', '≠', '≤', '≥', '÷', '×', '∞', '°', '±'];
 
@@ -70,6 +72,7 @@ export function EditExamForm() {
   const router = useRouter();
   const params = useParams();
   const examId = params.examId as string;
+  const db = getFirestore(app);
 
   const textAreaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -93,15 +96,37 @@ export function EditExamForm() {
 
     const fetchExamData = async () => {
         setIsLoading(true);
-        // This is where you would fetch data from a DB.
-        // For now, we'll just show the loading state.
-        // In a real app, you would find the exam and set the form values.
-        setIsLoading(false);
+        try {
+            const groupsCollection = collection(db, "studentGroups");
+            const groupSnapshot = await getDocs(groupsCollection);
+            const groupsList = groupSnapshot.docs.map(doc => doc.data().name);
+            setStudentGroups(groupsList);
+            
+            const examRef = doc(db, "exams", examId);
+            const examSnap = await getDoc(examRef);
+
+            if (examSnap.exists()) {
+                const examData = examSnap.data() as Exam;
+                form.reset({
+                    ...examData,
+                    startTime: formatDateTimeLocal(examData.startTime),
+                    endTime: formatDateTimeLocal(examData.endTime),
+                });
+            } else {
+                toast({ title: "Xəta", description: "İmtahan tapılmadı.", variant: 'destructive' });
+                router.push('/teacher/dashboard');
+            }
+        } catch (error) {
+            console.error("Error fetching exam data:", error);
+            toast({ title: "Xəta", description: "İmtahan məlumatları yüklənərkən xəta baş verdi.", variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
     }
     
     fetchExamData();
 
-  }, [examId, form, router, toast]);
+  }, [examId, form, router, toast, db]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -137,8 +162,9 @@ export function EditExamForm() {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // This is where you would update the exam in the DB.
     try {
+      const examRef = doc(db, "exams", examId);
+      await updateDoc(examRef, values);
       toast({
         title: "İmtahan Uğurla Yeniləndi!",
         description: "Dəyişikliklər yadda saxlanıldı.",

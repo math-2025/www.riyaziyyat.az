@@ -31,6 +31,8 @@ import Image from "next/image";
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { nanoid } from "nanoid";
+import { collection, getDocs, getFirestore, addDoc } from 'firebase/firestore';
+import { app } from "@/firebase/config";
 
 const mathSymbols = ['√', '∛', '²', '³', 'π', 'Σ', '∫', '≠', '≤', '≥', '÷', '×', '∞', '°', '±'];
 
@@ -65,10 +67,18 @@ export function CreateExamForm({ initialQuestions }: CreateExamFormProps) {
   const textAreaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [studentGroups, setStudentGroups] = useState<string[]>([]);
+  const db = getFirestore(app);
 
   useEffect(() => {
-    // Data fetching removed
-  }, []);
+    const fetchGroups = async () => {
+      const groupsCollection = collection(db, "studentGroups");
+      const groupSnapshot = await getDocs(groupsCollection);
+      const groupsList = groupSnapshot.docs.map(doc => doc.data().name);
+      setStudentGroups(groupsList);
+    };
+
+    fetchGroups();
+  }, [db]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -125,17 +135,27 @@ export function CreateExamForm({ initialQuestions }: CreateExamFormProps) {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const newExam: Omit<Exam, 'id'> = {
-      ...values,
-      announcement: '', // Initialize announcement
-    };
-    
-    // This is where you would add the exam to the database.
-    toast({
-      title: "İmtahan Uğurla Yaradıldı!",
-      description: "Yeni imtahan yadda saxlanıldı.",
-    });
-    router.push("/teacher/dashboard");
+    try {
+      const examData = {
+        ...values,
+        questions: values.questions.map(q => ({...q, id: nanoid()})),
+        announcement: '', // Initialize announcement
+      }
+      await addDoc(collection(db, "exams"), examData);
+      
+      toast({
+        title: "İmtahan Uğurla Yaradıldı!",
+        description: "Yeni imtahan yadda saxlanıldı.",
+      });
+      router.push("/teacher/dashboard");
+    } catch(e) {
+       console.error("Error adding exam: ", e);
+       toast({
+        title: "Xəta!",
+        description: "İmtahan yaradılarkən xəta baş verdi.",
+        variant: 'destructive'
+      });
+    }
   }
 
   return (

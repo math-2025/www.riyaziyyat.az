@@ -11,10 +11,14 @@ import { Student, Submission, Exam } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import withAuth from '@/components/withAuth';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 function ExamResultsPage() {
   const params = useParams();
   const examId = params.examId as string;
+  const db = getFirestore(app);
+  
   const [student, setStudent] = useState<Student | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
@@ -28,14 +32,30 @@ function ExamResultsPage() {
 
       const fetchData = async () => {
         setLoading(true);
-        // Mock data fetching. Replace with actual API calls.
-        setLoading(false);
+        try {
+          const examRef = doc(db, "exams", examId);
+          const examSnap = await getDoc(examRef);
+          if (examSnap.exists()) {
+            setExam({ id: examSnap.id, ...examSnap.data() } as Exam);
+          }
+
+          const submissionQuery = query(collection(db, "submissions"), where("examId", "==", examId), where("studentId", "==", parsedStudent.id));
+          const submissionSnapshot = await getDocs(submissionQuery);
+          if (!submissionSnapshot.empty) {
+            const subDoc = submissionSnapshot.docs[0];
+            setSubmission({ id: subDoc.id, ...subDoc.data() } as Submission);
+          }
+        } catch (error) {
+          console.error("Error fetching results:", error);
+        } finally {
+          setLoading(false);
+        }
       }
       fetchData();
     } else {
         setLoading(false);
     }
-  }, [examId]);
+  }, [examId, db]);
 
   if (loading) {
     return (

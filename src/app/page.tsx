@@ -11,7 +11,8 @@ import { Calculator } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Student } from '@/lib/types';
-
+import { getDocs, collection, query, where, getFirestore } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,17 +22,18 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   
   const loginImage = PlaceHolderImages.find(img => img.id === 'login-hero');
+  const db = getFirestore(app);
 
   useEffect(() => {
-    // Clear any existing session data on login page load
     localStorage.removeItem('currentStudent');
     localStorage.removeItem('userRole');
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Teacher Login
     if (email === 'Anar' && password === 'Anar2025') {
       localStorage.setItem('userRole', 'teacher');
       toast({ title: 'Giriş uğurludur', description: 'Xoş gəlmisiniz, Müəllim!' });
@@ -39,14 +41,36 @@ export default function LoginPage() {
       setIsLoading(false);
       return;
     }
-    
-    // NOTE: Student login is temporarily disabled as we removed direct DB dependency.
-    // This part can be re-enabled with proper mock data or API layer later.
-    toast({
-        variant: 'destructive',
-        title: 'Giriş alınmadı',
-        description: 'Hazırda yalnız müəllim girişi aktivdir.',
-    });
+
+    // Student Login
+    try {
+        const q = query(collection(db, "students"), where("email", "==", email), where("pass", "==", password), where("status", "==", "active"));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            toast({
+                variant: 'destructive',
+                title: 'Giriş alınmadı',
+                description: 'İstifadəçi adı və ya şifrə yanlışdır və ya hesabınız deaktiv edilib.',
+            });
+        } else {
+            const studentDoc = querySnapshot.docs[0];
+            const studentData = { id: studentDoc.id, ...studentDoc.data() } as Student;
+            
+            localStorage.setItem('currentStudent', JSON.stringify(studentData));
+            localStorage.setItem('userRole', 'student');
+            
+            toast({ title: 'Giriş uğurludur', description: `Xoş gəlmisən, ${studentData.name}!` });
+            router.push('/student/dashboard');
+        }
+    } catch (error) {
+        console.error("Login error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Sistem Xətası',
+            description: 'Giriş zamanı xəta baş verdi. Zəhmət olmasa, daha sonra yenidən cəhd edin.',
+        });
+    }
 
     setIsLoading(false);
   };

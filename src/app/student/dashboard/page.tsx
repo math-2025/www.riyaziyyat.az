@@ -29,25 +29,50 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import withAuth from '@/components/withAuth';
+import { getFirestore, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 function StudentDashboard() {
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [studentExams, setStudentExams] = useState<Exam[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const db = getFirestore(app);
 
   useEffect(() => {
     const studentData = localStorage.getItem('currentStudent');
     if (studentData) {
       const parsedStudent: Student = JSON.parse(studentData);
       setCurrentStudent(parsedStudent);
-      // Data fetching is removed, so we'll just show loading as false.
-      // In a real app, you'd fetch data here.
-      setIsLoading(false);
+
+      const examsQuery = query(collection(db, "exams"), where("assignedGroups", "array-contains", parsedStudent.group));
+      const submissionsQuery = query(collection(db, "submissions"), where("studentId", "==", parsedStudent.id));
+      
+      const unsubExams = onSnapshot(examsQuery, (querySnapshot) => {
+        const examsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exam));
+        setStudentExams(examsData);
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error fetching exams:", error);
+        setIsLoading(false);
+      });
+
+      const unsubSubmissions = onSnapshot(submissionsQuery, (querySnapshot) => {
+        const subsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+        setSubmissions(subsData);
+      }, (error) => {
+        console.error("Error fetching submissions:", error);
+      });
+      
+      return () => {
+        unsubExams();
+        unsubSubmissions();
+      };
+
     } else {
         setIsLoading(false);
     }
-  }, []);
+  }, [db]);
   
   const announcements = studentExams.filter(exam => exam.announcement).map(exam => ({
     examTitle: exam.title,

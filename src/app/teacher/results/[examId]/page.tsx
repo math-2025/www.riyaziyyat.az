@@ -39,6 +39,8 @@ import { parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import withAuth from '@/components/withAuth';
+import { getFirestore, collection, doc, onSnapshot, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { app } from '@/firebase/config';
 
 function StudentResultDetails({ exam, submission, student }: { exam: Exam; submission: Submission; student: Student }) {
 
@@ -107,6 +109,7 @@ function StudentResultDetails({ exam, submission, student }: { exam: Exam; submi
 function TeacherResultsPage() {
   const params = useParams();
   const examId = params.examId as string;
+  const db = getFirestore(app);
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -116,13 +119,30 @@ function TeacherResultsPage() {
   useEffect(() => {
     if (!examId) return;
 
-    const fetchData = async () => {
-        setLoading(false); 
-    };
-    
-    fetchData();
+    const fetchExam = onSnapshot(doc(db, "exams", examId), (doc) => {
+        if (doc.exists()) {
+            setExam({ id: doc.id, ...doc.data()} as Exam);
+        } else {
+            setLoading(false);
+        }
+    });
 
-  }, [examId]);
+    const fetchStudents = onSnapshot(collection(db, "students"), (snapshot) => {
+        setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
+    });
+
+    const fetchSubmissions = onSnapshot(query(collection(db, "submissions"), where("examId", "==", examId)), (snapshot) => {
+        setSubmissions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission)));
+        setLoading(false); // Assume loading is finished when submissions are here
+    });
+
+    return () => {
+        fetchExam();
+        fetchStudents();
+        fetchSubmissions();
+    };
+
+  }, [examId, db]);
 
   const groupedResults = exam ? exam.assignedGroups.reduce((acc, group) => {
     const groupSubmissions = submissions.map(sub => {
