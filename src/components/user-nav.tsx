@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User as UserIcon } from "lucide-react";
-import { clearSession } from "@/app/actions/auth";
+import { useRouter } from 'next/navigation';
 
 interface UserNavProps {
   email?: string | null;
@@ -20,6 +20,8 @@ interface UserNavProps {
 }
 
 export function UserNav({ email, name }: UserNavProps) {
+  const router = useRouter();
+
   const getInitials = (name?: string | null) => {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -27,6 +29,11 @@ export function UserNav({ email, name }: UserNavProps) {
       return names[0][0] + names[names.length - 1][0];
     }
     return name.substring(0, 2);
+  };
+
+  const handleLogout = () => {
+    // Since we don't have a session, just redirect to login
+    router.push('/login');
   };
 
   return (
@@ -59,7 +66,7 @@ export function UserNav({ email, name }: UserNavProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => clearSession()}>
+        <DropdownMenuItem onSelect={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Çıxış</span>
         </DropdownMenuItem>

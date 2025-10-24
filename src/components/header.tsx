@@ -1,25 +1,14 @@
 import Link from "next/link";
 import { Calculator } from "lucide-react";
 import { UserNav } from "./user-nav";
-import { cookies, headers } from "next/headers";
-import { getAdminApp } from "@/lib/firebase/adminApp";
-
-async function getUser() {
-    const sessionCookie = cookies().get('__session')?.value;
-    if (!sessionCookie) return null;
-
-    try {
-        const adminApp = getAdminApp();
-        const decodedClaims = await adminApp.auth().verifySessionCookie(sessionCookie, true);
-        return decodedClaims;
-    } catch (error) {
-        return null;
-    }
-}
-
 
 export async function Header() {
-  const user = await getUser();
+  // User session is no longer handled on the server.
+  // We can pass some placeholder/default data or manage state on the client.
+  const user = {
+    email: 'anar@muellim.com',
+    name: 'Anar M.',
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -28,7 +17,8 @@ export async function Header() {
           <Calculator className="h-7 w-7 text-primary" />
           <span className="text-lg font-bold">Riyaziyyat Testi</span>
         </Link>
-        {user && <UserNav email={user.email} name={user.name} />}
+        {/* We assume the user is logged in if they are seeing this header */}
+        <UserNav email={user.email} name={user.name} />
       </div>
     </header>
   );

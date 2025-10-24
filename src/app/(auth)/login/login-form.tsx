@@ -5,10 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 
-import { auth } from '@/lib/firebase/clientApp';
-import { createSession } from '@/app/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Düzgün e-poçt ünvanı daxil edin.' }),
-  password: z.string().min(6, { message: 'Şifrə ən azı 6 simvoldan ibarət olmalıdır.' }),
+  password: z.string().min(1, { message: 'Şifrə boş ola bilməz.' }),
 });
 
 export function LoginForm() {
@@ -35,19 +32,13 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const idToken = await userCredential.user.getIdToken();
-      
-      const sessionResult = await createSession(idToken);
-
-      if (sessionResult.success) {
-        router.push('/dashboard');
-      } else {
-        throw new Error(sessionResult.error || 'Session could not be created.');
-      }
-    } catch (error: any) {
-      console.error(error);
+    
+    // Simple hardcoded check instead of Firebase Auth
+    if (values.email === 'anar@muellim.com' && values.password === 'Anar2025') {
+      // In a real app, you'd handle session management here.
+      // For now, we just redirect.
+      router.push('/dashboard');
+    } else {
       toast({
         variant: 'destructive',
         title: 'Giriş uğursuz oldu',
@@ -67,7 +58,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>E-poçt</FormLabel>
               <FormControl>
-                <Input placeholder="siz@nümunə.com" {...field} />
+                <Input placeholder="anar@muellim.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
