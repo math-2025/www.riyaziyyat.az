@@ -26,3 +26,16 @@ export interface ExamResult {
   answers: { questionId: string; selectedAnswerIndex: number; isCorrect: boolean }[];
   completedAt: Timestamp;
 }
+
+export interface Student {
+  id: string;
+  fullName: string;
+  group: string;
+  username: string;
+  status: 'active' | 'inactive';
+}
+
+export interface Group {
+    id: string;
+    name: string;
+}

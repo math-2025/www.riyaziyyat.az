@@ -1,4 +1,4 @@
-import { type Exam } from "@/types";
+import { type Exam, type Group, type Student } from "@/types";
 
 export const mockExams: Exam[] = [
   {
@@ -59,4 +59,18 @@ export const mockExams: Exam[] = [
       }
     ]
   }
+];
+
+
+export const mockGroups: Group[] = [
+    { id: 'group-a', name: 'Qrup A' },
+    { id: 'group-b', name: 'Qrup B' },
+    { id: 'group-c', name: 'Qrup C' },
+];
+
+export const mockStudents: Student[] = [
+    { id: 'student-1', fullName: 'Vəliyev Vəli', group: 'Qrup A', username: 'veli.v', status: 'active' },
+    { id: 'student-2', fullName: 'Səmədova Səma', group: 'Qrup B', username: 'sema.s', status: 'active' },
+    { id: 'student-3', fullName: 'Quliyev Qulu', group: 'Qrup A', username: 'qulu.q', status: 'inactive' },
+    { id: 'student-4', fullName: 'Nəbiyeva Nərgiz', group: 'Qrup C', username: 'nergiz.n', status: 'active' },
 ];

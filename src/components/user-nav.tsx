@@ -23,16 +23,16 @@ export function UserNav({ email, name }: UserNavProps) {
   const router = useRouter();
 
   const getInitials = (name?: string | null) => {
-    if (!name) return 'U';
+    if (!name) return 'A';
+    // Logic to get initials from "Anar müəllim" -> AM
     const names = name.split(' ');
     if (names.length > 1) {
-      return names[0][0] + names[names.length - 1][0];
+      return names[0][0] + names[1][0];
     }
-    return name.substring(0, 2);
+    return name.substring(0, 1);
   };
 
   const handleLogout = () => {
-    // Since we don't have a session, just redirect to login
     router.push('/login');
   };
 
@@ -41,8 +41,6 @@ export function UserNav({ email, name }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {/* Add AvatarImage if you store user profile pictures */}
-            {/* <AvatarImage src="/avatars/01.png" alt="@shadcn" /> */}
             <AvatarFallback className="bg-primary text-primary-foreground font-bold">
               {getInitials(name)}
             </AvatarFallback>
