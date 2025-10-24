@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Calculator, Pencil, ShieldAlert, UserCog } from 'lucide-react';
+import { Calculator, Pencil, ShieldAlert, UserCog, FileQuestion } from 'lucide-react';
 import { UserNav } from './user-nav';
 import { Button } from './ui/button';
 
@@ -24,11 +24,11 @@ export function SiteHeader({ userType }: SiteHeaderProps) {
               >
                 İdarə Paneli
               </Link>
-              <Link
-                href="/teacher/create"
-                className="transition-colors hover:text-foreground/80 text-foreground/60"
+               <Link
+                href="/teacher/appeals"
+                className="transition-colors hover:text-foreground/80 text-foreground/60 flex items-center gap-2"
               >
-                İmtahan Yarat
+                <FileQuestion className="h-4 w-4"/> Apelyasiyalar
               </Link>
               <Link
                 href="/teacher/students"
@@ -44,12 +44,20 @@ export function SiteHeader({ userType }: SiteHeaderProps) {
               </Link>
             </>
           ) : (
+            <>
              <Link
                 href="/student/dashboard"
                 className="transition-colors hover:text-foreground/80 text-foreground/60"
               >
                 İdarə Paneli
               </Link>
+               <Link
+                href="/student/appeals"
+                className="transition-colors hover:text-foreground/80 text-foreground/60 flex items-center gap-2"
+              >
+                Apelyasiyalarım
+              </Link>
+            </>
           )}
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">

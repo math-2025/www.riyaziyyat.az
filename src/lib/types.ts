@@ -38,3 +38,17 @@ export type Submission = {
   cheatingDetected?: boolean;
   score?: number;
 };
+
+export type Appeal = {
+  id: string;
+  examId: string;
+  studentId: string;
+  questionId: string;
+  studentJustification: string;
+  status: 'pending' | 'approved' | 'rejected';
+  teacherResponse?: string;
+  createdAt: string;
+  examTitle: string;
+  questionText: string;
+  studentName: string;
+};

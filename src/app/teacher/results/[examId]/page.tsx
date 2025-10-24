@@ -39,18 +39,32 @@ import { parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import withAuth from '@/components/withAuth';
-import { getFirestore, collection, doc, onSnapshot, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, query, where } from 'firebase/firestore';
 import { app } from '@/firebase/config';
 
 function StudentResultDetails({ exam, submission, student }: { exam: Exam; submission: Submission; student: Student }) {
 
   if (!exam || !submission) return null;
+
+  const getScore = () => {
+    if (submission.score !== undefined && submission.score >= 0) {
+        return submission.score;
+    }
+    // Calculate score if not present
+    let correctCount = 0;
+    exam.questions.forEach(q => {
+        if (submission.answers[q.id]?.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
+            correctCount++;
+        }
+    });
+    return exam.pointsPerQuestion * correctCount;
+  }
   
   return (
     <DialogContent className="max-w-3xl">
       <DialogHeader>
         <DialogTitle className="font-headline text-2xl">
-          {student.name} üçün Təqdimat Detalları
+          {student.name} üçün Təqdimat Detalları ({getScore()} Bal)
         </DialogTitle>
         {submission.cheatingDetected && (
             <div className="flex items-center gap-2 pt-2 text-destructive">
@@ -119,7 +133,7 @@ function TeacherResultsPage() {
   useEffect(() => {
     if (!examId) return;
 
-    const fetchExam = onSnapshot(doc(db, "exams", examId), (doc) => {
+    const unsubExam = onSnapshot(doc(db, "exams", examId), (doc) => {
         if (doc.exists()) {
             setExam({ id: doc.id, ...doc.data()} as Exam);
         } else {
@@ -127,36 +141,68 @@ function TeacherResultsPage() {
         }
     });
 
-    const fetchStudents = onSnapshot(collection(db, "students"), (snapshot) => {
+    const unsubStudents = onSnapshot(collection(db, "students"), (snapshot) => {
         setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
     });
 
-    const fetchSubmissions = onSnapshot(query(collection(db, "submissions"), where("examId", "==", examId)), (snapshot) => {
-        setSubmissions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission)));
-        setLoading(false); // Assume loading is finished when submissions are here
+    const unsubSubmissions = onSnapshot(query(collection(db, "submissions"), where("examId", "==", examId)), (snapshot) => {
+        const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
+        
+        // Auto-grade submissions if score is not set
+        const promises = subs.map(sub => {
+            if (sub.score === undefined || sub.score === -1) {
+                let correctCount = 0;
+                const examData = exam; // use staged exam data
+                if(examData){
+                    examData.questions.forEach(q => {
+                        if (sub.answers[q.id]?.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
+                            correctCount++;
+                        }
+                    });
+                    const score = examData.pointsPerQuestion * correctCount;
+                    const subRef = doc(db, 'submissions', sub.id);
+                    return updateDoc(subRef, { score });
+                }
+            }
+            return Promise.resolve();
+        });
+
+        Promise.all(promises).then(() => {
+            // Re-fetch might be needed or just update state locally
+             setSubmissions(subs.map(s => {
+                if(s.score === undefined || s.score === -1){
+                     let correctCount = 0;
+                    const examData = exam;
+                    if(examData){
+                         examData.questions.forEach(q => {
+                            if (s.answers[q.id]?.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
+                                correctCount++;
+                            }
+                        });
+                        return {...s, score: examData.pointsPerQuestion * correctCount };
+                    }
+                }
+                return s;
+            }));
+            setLoading(false);
+        });
     });
 
     return () => {
-        fetchExam();
-        fetchStudents();
-        fetchSubmissions();
+        unsubExam();
+        unsubStudents();
+        unsubSubmissions();
     };
 
-  }, [examId, db]);
+  }, [examId, db, exam]);
 
   const groupedResults = exam ? exam.assignedGroups.reduce((acc, group) => {
     const groupSubmissions = submissions.map(sub => {
         const student = students.find(s => s.id === sub.studentId && s.group === group);
         if (!student || !exam) return null;
-
-        let correctCount = 0;
-        exam.questions.forEach(q => {
-            if (sub.answers[q.id]?.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
-                correctCount++;
-            }
-        });
-        const studentScore = exam.pointsPerQuestion * correctCount;
-        return { ...sub, student, studentScore };
+        
+        const score = (sub.score !== undefined && sub.score >= 0) ? sub.score : 0;
+        return { ...sub, student, studentScore: score };
     }).filter(Boolean) as (Submission & { student: Student; studentScore: number })[];
 
     groupSubmissions.sort((a, b) => {
