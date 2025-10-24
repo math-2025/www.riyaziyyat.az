@@ -7,7 +7,7 @@ export default function LoginPage() {
       <CardHeader>
         <CardTitle>Hesabınıza Daxil Olun</CardTitle>
         <CardDescription>
-          Müəlliminiz tərəfindən verilən e-poçt və şifrə ilə daxil olun.
+          Müəllim və ya şagird hesabınızla daxil olun. Hesab məlumatlarınızı müəlliminizdən əldə edə bilərsiniz.
         </CardDescription>
       </CardHeader>
       <CardContent>
