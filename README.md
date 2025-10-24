@@ -1,5 +1,15 @@
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# try
+# try
+# try
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
+# riyaziyyat.az
